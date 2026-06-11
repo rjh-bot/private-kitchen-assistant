@@ -1,0 +1,339 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>私人厨房助理</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root { --primary: #4CAF50; --primary-dark: #388E3C; --bg: #f5f5f5; --sidebar-bg: #1a1a2e; --sidebar-text: #e0e0e0; --card-bg: #fff; --text: #333; --text-light: #666; --border: #e0e0e0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+.app { display: flex; height: 100vh; }
+.sidebar { width: 200px; background: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar-header { padding: 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.sidebar-title { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
+.sidebar-goal { font-size: 0.8rem; color: rgba(255,255,255,0.6); }
+.sidebar-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
+.nav-btn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: transparent; border: none; color: var(--sidebar-text); font-size: 0.9rem; border-radius: 8px; cursor: pointer; }
+.nav-btn:hover { background: rgba(255,255,255,0.1); }
+.nav-btn.active { background: var(--primary); color: #fff; }
+.nav-icon { font-size: 1.2rem; }
+.main-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.view { display: none; flex-direction: column; height: 100%; padding: 24px; overflow-y: auto; }
+.view.active { display: flex; }
+.chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px; }
+.chat-msg { display: flex; gap: 12px; max-width: 80%; }
+.chat-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+.msg-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; background: var(--border); flex-shrink: 0; }
+.chat-msg.user .msg-avatar { background: var(--primary); }
+.msg-content { padding: 10px 14px; border-radius: 12px; background: var(--card-bg); line-height: 1.6; white-space: pre-wrap; font-size: 0.9rem; }
+.chat-msg.user .msg-content { background: var(--primary); color: #fff; }
+.chat-msg.assistant .msg-content { background: #e8f5e9; }
+.chat-input-area { display: flex; gap: 8px; padding: 16px 0; background: var(--bg); }
+.chat-input-area textarea { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; resize: none; font-family: inherit; font-size: 0.9rem; outline: none; }
+.chat-input-area textarea:focus { border-color: var(--primary); }
+.send-btn { padding: 10px 20px; background: var(--primary); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; align-self: flex-end; }
+.send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+h2 { font-size: 1.3rem; margin-bottom: 8px; }
+.section-desc { color: var(--text-light); font-size: 0.85rem; margin-bottom: 20px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+.form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; font-family: inherit; outline: none; }
+.form-group input:focus, .form-group textarea:focus { border-color: var(--primary); }
+.form-row { display: flex; gap: 12px; }
+.form-row .form-group { flex: 1; }
+.goal-options { display: flex; gap: 8px; flex-wrap: wrap; }
+.goal-btn { padding: 8px 16px; border: 1px solid var(--border); border-radius: 20px; background: var(--card-bg); cursor: pointer; font-size: 0.85rem; }
+.goal-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.primary-btn { padding: 10px 24px; background: var(--primary); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+.primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.secondary-btn { padding: 10px 24px; background: var(--card-bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+.plan-controls, .plan-result, .image-result { background: var(--card-bg); padding: 20px; border-radius: 12px; margin-bottom: 16px; }
+.plan-content, .result-content { white-space: pre-wrap; font-family: inherit; font-size: 0.9rem; line-height: 1.8; margin-top: 12px; }
+.upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; margin-bottom: 16px; }
+.upload-area:hover { border-color: var(--primary); }
+.upload-area img { max-width: 100%; max-height: 260px; border-radius: 8px; }
+.image-actions { display: flex; gap: 8px; margin-bottom: 16px; }
+.loading { text-align: center; color: var(--text-light); padding: 20px; }
+@media (max-width: 640px) { .sidebar { width: 60px; } .nav-label, .sidebar-goal, .sidebar-title { display: none; } .chat-msg { max-width: 95%; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-header"><div class="sidebar-title">🍳 厨房助理</div><div class="sidebar-goal" id="sidebarGoal">目标: 健康饮食</div></div>
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" data-view="chat" onclick="switchView('chat')"><span class="nav-icon">💬</span><span class="nav-label">对话</span></button>
+      <button class="nav-btn" data-view="diet" onclick="switchView('diet')"><span class="nav-icon">📋</span><span class="nav-label">饮食计划</span></button>
+      <button class="nav-btn" data-view="image" onclick="switchView('image')"><span class="nav-icon">📷</span><span class="nav-label">图片识别</span></button>
+      <button class="nav-btn" data-view="profile" onclick="switchView('profile')"><span class="nav-icon">👤</span><span class="nav-label">个人档案</span></button>
+    </nav>
+  </aside>
+  <main class="main-content">
+
+    <!-- Chat View -->
+    <div id="view-chat" class="view active">
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-msg assistant"><div class="msg-avatar">🍳</div><div class="msg-content">你好！我是你的私人厨房助理。我可以帮你搜索菜谱、分析营养、制定饮食计划、识别食材。有什么需要帮忙的吗？</div></div>
+      </div>
+      <div class="chat-input-area">
+        <textarea id="chatInput" rows="2" placeholder="输入你的问题..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendChat()">发送</button>
+      </div>
+    </div>
+
+    <!-- Profile View -->
+    <div id="view-profile" class="view">
+      <h2>👤 个人档案</h2>
+      <p class="section-desc">设置健康目标和饮食偏好，助理将据此提供个性化建议。</p>
+      <div class="form-group"><label>健康目标</label><div class="goal-options" id="profileGoal"></div></div>
+      <div class="form-row"><div class="form-group"><label>体重 (kg)</label><input type="number" id="profileWeight"></div><div class="form-group"><label>身高 (cm)</label><input type="number" id="profileHeight"></div></div>
+      <div class="form-group"><label>饮食偏好</label><input type="text" id="profilePreference" placeholder="例如：喜欢清淡、偏爱鸡肉和鱼类"></div>
+      <div class="form-group"><label>过敏原 / 忌口</label><input type="text" id="profileAllergies" placeholder="例如：花生过敏、不吃辣"></div>
+      <div class="form-group"><label>长期饮食指令</label><textarea id="profileInstructions" rows="3" placeholder="例如：每餐保证蛋白质摄入，少油少盐"></textarea></div>
+      <button class="primary-btn" id="saveProfileBtn" onclick="saveProfile()">保存设置</button>
+    </div>
+
+    <!-- Diet Plan View -->
+    <div id="view-diet" class="view">
+      <h2>📋 饮食计划</h2>
+      <p class="section-desc">根据你的目标自动生成个性化每日饮食计划。</p>
+      <div class="plan-controls">
+        <div class="form-group"><label>健康目标</label><div class="goal-options" id="dietGoal"></div></div>
+        <div class="form-row">
+          <div class="form-group"><label>每日热量 (千卡)</label><input type="number" id="dietCalories" value="1800"></div>
+          <div class="form-group"><label>天数</label><select id="dietDays"><option value="1">1天</option><option value="3" selected>3天</option><option value="7">7天</option></select></div>
+        </div>
+        <button class="primary-btn" onclick="generatePlan()">生成饮食计划</button>
+      </div>
+      <div id="dietResult" style="display:none" class="plan-result"><h3>你的饮食计划</h3><pre class="plan-content" id="dietContent"></pre></div>
+    </div>
+
+    <!-- Image View -->
+    <div id="view-image" class="view">
+      <h2>📷 食材/菜品识别</h2>
+      <p class="section-desc">上传食材或菜品图片，AI 帮你识别并估算营养成分。</p>
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        <div id="uploadPlaceholder"><div style="font-size:3rem;margin-bottom:8px">📸</div><p>点击上传图片</p></div>
+        <img id="imagePreview" style="display:none">
+      </div>
+      <input type="file" id="fileInput" accept="image/*" hidden onchange="handleFile(this)">
+      <div class="image-actions" id="imageActions" style="display:none">
+        <button class="secondary-btn" onclick="resetImage()">重新选择</button>
+        <button class="primary-btn" onclick="analyzeImage()">识别营养成分</button>
+      </div>
+      <div id="imageResult" style="display:none" class="image-result"><h3>识别结果</h3><pre class="result-content" id="imageResultContent"></pre></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const GOALS = ["健康饮食", "减脂", "增肌", "控糖"];
+let currentFile = null;
+
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelector(`.nav-btn[data-view="${name}"]`).classList.add('active');
+}
+
+// --- Profile ---
+function initGoalButtons(containerId, selected, onChange) {
+  const c = document.getElementById(containerId); if(!c) return;
+  c.innerHTML = '';
+  GOALS.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className = 'goal-btn' + (g === selected ? ' active' : '');
+    btn.textContent = g;
+    btn.onclick = () => { c.querySelectorAll('.goal-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); if(onChange) onChange(g); };
+    c.appendChild(btn);
+  });
+}
+
+async function loadProfile() {
+  try {
+    const r = await fetch('/api/user/profile');
+    const p = await r.json();
+    if (p.goal) { document.getElementById('sidebarGoal').textContent = '目标: ' + p.goal; }
+    document.getElementById('profileWeight').value = p.weight || '';
+    document.getElementById('profileHeight').value = p.height || '';
+    document.getElementById('profilePreference').value = p.diet_preference || '';
+    document.getElementById('profileAllergies').value = p.allergies || '';
+    document.getElementById('profileInstructions').value = p.long_term_instructions || '';
+    initGoalButtons('profileGoal', p.goal, (g) => {});
+    initGoalButtons('dietGoal', p.goal || '健康饮食', (g) => { document.getElementById('sidebarGoal').textContent = '目标: ' + g; });
+  } catch(e) { console.error('Load profile failed:', e); }
+}
+
+async function saveProfile() {
+  const data = {
+    goal: document.querySelector('#profileGoal .goal-btn.active')?.textContent || '健康饮食',
+    weight: parseFloat(document.getElementById('profileWeight').value) || null,
+    height: parseFloat(document.getElementById('profileHeight').value) || null,
+    diet_preference: document.getElementById('profilePreference').value,
+    allergies: document.getElementById('profileAllergies').value,
+    long_term_instructions: document.getElementById('profileInstructions').value,
+  };
+  try {
+    await fetch('/api/user/profile', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    document.getElementById('sidebarGoal').textContent = '目标: ' + data.goal;
+    document.getElementById('saveProfileBtn').textContent = '✅ 已保存';
+    setTimeout(() => { document.getElementById('saveProfileBtn').textContent = '保存设置'; }, 2000);
+  } catch(e) { alert('保存失败: ' + e.message); }
+}
+
+// --- Chat ---
+let isLoading = false;
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg || isLoading) return;
+  input.value = '';
+  isLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  const msgs = document.getElementById('chatMessages');
+  msgs.innerHTML += `<div class="chat-msg user"><div class="msg-avatar">👤</div><div class="msg-content">${escapeHtml(msg)}</div></div>`;
+  const loadingDiv = document.createElement('div');
+  loadingDiv.className = 'chat-msg assistant';
+  loadingDiv.innerHTML = '<div class="msg-avatar">🍳</div><div class="msg-content">思考中...</div>';
+  msgs.appendChild(loadingDiv);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  try {
+    const res = await fetch('/api/chat/stream', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ message: msg, user_id: 1 })
+    });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let assistantMsg = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data !== '' && data !== 'assistant') {
+            assistantMsg = data;
+            const lastChild = msgs.lastElementChild;
+            if (lastChild && lastChild.querySelector('.msg-content')) {
+              lastChild.querySelector('.msg-content').textContent = data;
+            } else {
+              msgs.innerHTML += `<div class="chat-msg assistant"><div class="msg-avatar">🍳</div><div class="msg-content">${escapeHtml(data)}</div></div>`;
+            }
+            msgs.scrollTop = msgs.scrollHeight;
+          }
+        }
+      }
+    }
+    // Remove loading div if still there
+    const lastChild = msgs.lastElementChild;
+    if (lastChild && lastChild.querySelector('.msg-content') && lastChild.querySelector('.msg-content').textContent === '思考中...') {
+      if (assistantMsg) {
+        lastChild.querySelector('.msg-content').textContent = assistantMsg;
+      } else {
+        lastChild.remove();
+      }
+    }
+  } catch(e) {
+    msgs.innerHTML += `<div class="chat-msg assistant"><div class="msg-avatar">🍳</div><div class="msg-content">错误: ${e.message}</div></div>`;
+  }
+  isLoading = false;
+  document.getElementById('sendBtn').disabled = false;
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// --- Diet Plan ---
+async function generatePlan() {
+  const goal = document.querySelector('#dietGoal .goal-btn.active')?.textContent || '健康饮食';
+  const calories = document.getElementById('dietCalories').value;
+  const days = document.getElementById('dietDays').value;
+  const result = document.getElementById('dietResult');
+  const content = document.getElementById('dietContent');
+
+  result.style.display = 'block';
+  content.textContent = '生成中...';
+
+  try {
+    const res = await fetch('/api/chat/stream', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ message: `请帮我制定一个${goal}饮食计划，每日${calories}千卡，共${days}天。`, user_id: 1 })
+    });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let full = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const text = decoder.decode(value, { stream: true });
+      const lines = text.split('\n').filter(l => l.startsWith('data: ')).map(l => l.slice(6));
+      full = lines.join('\n') || full;
+    }
+    content.textContent = full || '生成完成，请刷新查看';
+  } catch(e) {
+    content.textContent = '生成失败: ' + e.message;
+  }
+}
+
+// --- Image ---
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  currentFile = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('uploadPlaceholder').style.display = 'none';
+    const img = document.getElementById('imagePreview');
+    img.src = e.target.result;
+    img.style.display = 'block';
+    document.getElementById('imageActions').style.display = 'flex';
+    document.getElementById('imageResult').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetImage() {
+  currentFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('uploadPlaceholder').style.display = 'block';
+  document.getElementById('imagePreview').style.display = 'none';
+  document.getElementById('imageActions').style.display = 'none';
+  document.getElementById('imageResult').style.display = 'none';
+}
+
+async function analyzeImage() {
+  if (!currentFile) return;
+  const formData = new FormData();
+  formData.append('file', currentFile);
+  const result = document.getElementById('imageResult');
+  const content = document.getElementById('imageResultContent');
+  result.style.display = 'block';
+  content.textContent = '分析中...';
+  try {
+    const res = await fetch('/api/image/analyze', { method: 'POST', body: formData });
+    const data = await res.json();
+    content.textContent = data.result || '分析完成，请查看结果';
+  } catch(e) {
+    content.textContent = '分析失败: ' + e.message;
+  }
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+// Init
+loadProfile();
+</script>
+</body>
+</html>

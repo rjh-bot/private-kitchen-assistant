@@ -1,0 +1,4 @@
+﻿name = "private-kitchen-assistant"
+description = "私人厨房助理 - 融合 LLM、RAG、Agent、多模态的个性化饮食管理系统"
+created = "2026-06-10"
+framework = "python-fastapi-react"
